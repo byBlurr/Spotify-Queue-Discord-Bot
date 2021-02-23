@@ -26,7 +26,12 @@ namespace blurr.spotifybot
         {
             await Task.Delay(2500);
             await AuthorizeSpotifyAsync();
+            UpdateStatus();
         }
+
+
+        private static readonly string CLIENT_ID = "43082df32cdc4146b823a90d23ac34de";
+        private static readonly string CLIENT_SECRET = "1a44b4c8649547ca9521c0da3be3775b";
 
         private static EmbedIOAuthServer Server;
         private static SpotifyClient SClient;
@@ -39,7 +44,7 @@ namespace blurr.spotifybot
             await Server.Start();
             Server.AuthorizationCodeReceived += OnAuthorizationCodeReceivedAsync;
 
-            var loginRequest = new LoginRequest(Server.BaseUri, "ClientId", LoginRequest.ResponseType.Code)
+            var loginRequest = new LoginRequest(Server.BaseUri, CLIENT_ID, LoginRequest.ResponseType.Code)
             {
                 Scope = new[] { Scopes.UserModifyPlaybackState, Scopes.UserReadCurrentlyPlaying, Scopes.UserReadPlaybackPosition, Scopes.UserReadPlaybackState, Scopes.AppRemoteControl }
             };
@@ -53,7 +58,7 @@ namespace blurr.spotifybot
             await Server.Stop();
 
             var config = SpotifyClientConfig.CreateDefault();
-            var tokenResponse = await new OAuthClient(config).RequestToken(new AuthorizationCodeTokenRequest("ClientId", "ClientSecret", response.Code, new Uri("http://localhost:5000/callback")));
+            var tokenResponse = await new OAuthClient(config).RequestToken(new AuthorizationCodeTokenRequest(CLIENT_ID, CLIENT_SECRET, response.Code, new Uri("http://localhost:5000/callback")));
 
             SClient = new SpotifyClient(tokenResponse.AccessToken);
             SToken = tokenResponse.AccessToken;
@@ -73,7 +78,12 @@ namespace blurr.spotifybot
 
         public static async Task SkipSongAsync() => await SClient.Player.SkipNext();
 
-        public async Task UpdateStatusAsync()
+        public static async Task GetQueueAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UpdateStatus()
         {
             var update = Task.Run(async () =>
             {
@@ -81,31 +91,35 @@ namespace blurr.spotifybot
                 {
                     await Task.Delay(1000);
 
-                    PlayerCurrentlyPlayingRequest request = new PlayerCurrentlyPlayingRequest(PlayerCurrentlyPlayingRequest.AdditionalTypes.All);
-                    CurrentlyPlaying playing = await SClient.Player.GetCurrentlyPlaying(request);
-
-                    if (playing != null)
+                    if (Ready())
                     {
-                        if (playing.IsPlaying)
+                        PlayerCurrentlyPlayingRequest request = new PlayerCurrentlyPlayingRequest(PlayerCurrentlyPlayingRequest.AdditionalTypes.All);
+                        CurrentlyPlaying playing = await SClient.Player.GetCurrentlyPlaying(request);
+
+                        if (playing != null)
                         {
-                            await bot.SetStatusAsync(UserStatus.Online);
-                            string song = "";
-
-                            switch (playing.Item.Type)
+                            if (playing.IsPlaying)
                             {
-                                case ItemType.Track:
-                                    song = (playing.Item as FullTrack).Name + " by " + (playing.Item as FullTrack).Artists;
-                                    break;
-                                case ItemType.Episode:
-                                    song = (playing.Item as FullEpisode).Name + " by " + (playing.Item as FullEpisode).Artists;
-                                    break;
-                            }
+                                await bot.SetStatusAsync(UserStatus.Online);
+                                string song = "";
 
-                            await bot.SetGameAsync(song, type: ActivityType.Listening);
+                                switch (playing.Item.Type)
+                                {
+                                    case ItemType.Track:
+                                        song = (playing.Item as FullTrack).Name + " by " + (playing.Item as FullTrack).Artists;
+                                        break;
+                                    case ItemType.Episode:
+                                        song = (playing.Item as FullEpisode).Name;
+                                        break;
+                                }
+
+                                await bot.SetGameAsync(song, type: ActivityType.Listening);
+                            }
+                            else await bot.SetStatusAsync(UserStatus.DoNotDisturb);
                         }
-                        else await bot.SetStatusAsync(UserStatus.DoNotDisturb);
+                        else await bot.SetGameAsync($"Spotify", type: ActivityType.Listening);
                     }
-                    else await bot.SetGameAsync($"Spotify", type: ActivityType.Listening);
+                    else await bot.SetStatusAsync(UserStatus.DoNotDisturb);
                 }
             });
         }
