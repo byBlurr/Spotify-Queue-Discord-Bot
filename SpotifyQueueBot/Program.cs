@@ -1,12 +1,17 @@
-﻿using System;
+﻿using blurr.spotifybot;
+using Discord.Net.Bot;
+using System;
 
 namespace SpotifyQueueBot
 {
-    class Program
+    class Program : Bot
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            CommandHandler handler = new SCommandHandler();
+            handler.ExecutableName = "SpotifyQueueBot";
+            handler.RestartEveryMs = 21600000; // Every 6 hours
+            StartBot(handler);
         }
     }
 }
