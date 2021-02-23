@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Discord.Net.Bot" Version="2.2.0.13" />
+    <PackageReference Include="SpotifyAPI.Web" Version="6.0.0" />
+    <PackageReference Include="SpotifyAPI.Web.Auth" Version="6.0.0" />
   </ItemGroup>
 
 </Project>
