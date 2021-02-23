@@ -1,5 +1,6 @@
 ﻿using Discord.Commands;
 using SpotifyAPI.Web;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -34,7 +35,14 @@ namespace blurr.spotifybot
                 {
                     if (id < 11)
                     {
-                        message += $"\n**[{id,2} ]** {track.Name} by {track.Artists[0].Name}";
+                        string extra = "";
+                        if (track.Explicit) extra = "**[EXPLICIT]**";
+                        TimeSpan length = new TimeSpan(0, 0, 0, 0, track.DurationMs);
+                        extra += " - " + length.Minutes + ":";
+                        if (length.Seconds < 10) extra += "0" + length.Seconds;
+                        else extra += length.Seconds;
+
+                        message += $"\n**[{id,2} ]** {track.Name} by {track.Artists[0].Name} {extra}";
                         results.Add(new SearchResult() { Id = id.ToString(), Name = $"{track.Name} by {track.Artists}", Uri = track.Uri });
                         id++;
                     }
@@ -75,6 +83,25 @@ namespace blurr.spotifybot
             }
 
             SCommandHandler.GetQueue();
+        }
+
+        [Command("help")]
+        [Alias("?")]
+        private async Task HelpAsync()
+        {
+            if (!SCommandHandler.Ready())
+            {
+                await Context.Channel.SendMessageAsync("The host is still setting me up...\nIf you need help with setup, refer to the GitHub readme.");
+                return;
+            }
+
+            await Context.Channel.SendMessageAsync(
+                $"Authorization token expires at {SCommandHandler.GetExpiry().ToShortTimeString()}\n\n" +
+                $"Add a song to a playlist with: `++ <song>` for example `++ Amazed Lonestar`\n" +
+                $"Skip the currently playing song with: `+-`\n" +
+                $"Check the currently queued songs with: `+=`\n" +
+                $"See this help with: `+?`\n\n"
+            );
         }
     }
 }
