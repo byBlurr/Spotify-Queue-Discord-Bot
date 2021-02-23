@@ -69,6 +69,8 @@ namespace blurr.spotifybot
             SRefresh = tokenResponse.RefreshToken;
             SReady = true;
 
+            Console.Clear();
+            Server.Dispose();
             await Util.LoggerAsync(new LogMessage(LogSeverity.Info, "Spotify", "Spotify Connected. You can now start queueing songs."));
         }
 
@@ -116,12 +118,33 @@ namespace blurr.spotifybot
                             {
                                 await AddSongToQueueAsync(r.Results[song - 1].Uri);
                                 Requests.Remove(r);
-                                Queue.Add(new QueueItem() { SongName = r.Results[song - 1].Name, SongUri = r.Results[song-1].Uri, RequestedBy = msg.Author.Mention });
+                                Queue.Add(new QueueItem() { SongName = r.Results[song - 1].Name, SongUri = r.Results[song - 1].Uri, RequestedBy = msg.Author.Mention });
+                                await msg.Channel.SendMessageAsync($"**{r.Results[song - 1].Name}** has been added to the queue!");
                             }
                             else await msg.Channel.SendMessageAsync("That wasn't a valid ID... what ID? THE NUMBER IN BOLD IN THE BOX. NEXT TO THE SONG YOU WANT");
 
                         }
-                        catch (Exception ex)
+                        catch
+                        {
+                            await msg.Channel.SendMessageAsync("That wasn't an ID... what ID? THE NUMBER IN BOLD IN THE BOX. NEXT TO THE SONG YOU WANT");
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            int song = int.Parse(response[0].ToString() + response[1].ToString());
+                            if (song > 0 && song <= r.Results.Count)
+                            {
+                                await AddSongToQueueAsync(r.Results[song - 1].Uri);
+                                Requests.Remove(r);
+                                Queue.Add(new QueueItem() { SongName = r.Results[song - 1].Name, SongUri = r.Results[song - 1].Uri, RequestedBy = msg.Author.Mention });
+                                await msg.Channel.SendMessageAsync($"**{r.Results[song - 1].Name}** has been added to the queue!");
+                            }
+                            else await msg.Channel.SendMessageAsync("That wasn't a valid ID... what ID? THE NUMBER IN BOLD IN THE BOX. NEXT TO THE SONG YOU WANT");
+
+                        }
+                        catch
                         {
                             await msg.Channel.SendMessageAsync("That wasn't an ID... what ID? THE NUMBER IN BOLD IN THE BOX. NEXT TO THE SONG YOU WANT");
                         }
