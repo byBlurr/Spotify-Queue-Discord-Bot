@@ -36,6 +36,7 @@ namespace blurr.spotifybot
 
         private static EmbedIOAuthServer Server;
         private static SpotifyClient SClient;
+        private static DateTime SExpiry;
         private static string SToken, SRefresh;
         private static bool SReady = false;
 
@@ -60,6 +61,7 @@ namespace blurr.spotifybot
         private async Task OnAuthorizationCodeReceivedAsync(object sender, AuthorizationCodeResponse response)
         {
             await Server.Stop();
+            Server.Dispose();
 
             var config = SpotifyClientConfig.CreateDefault();
             var tokenResponse = await new OAuthClient(config).RequestToken(new AuthorizationCodeTokenRequest(CLIENT_ID, CLIENT_SECRET, response.Code, new Uri("http://localhost:5000/callback")));
@@ -68,10 +70,30 @@ namespace blurr.spotifybot
             SToken = tokenResponse.AccessToken;
             SRefresh = tokenResponse.RefreshToken;
             SReady = true;
+            SExpiry = DateTime.Now.AddSeconds(tokenResponse.ExpiresIn);
 
             Console.Clear();
-            Server.Dispose();
             await Util.LoggerAsync(new LogMessage(LogSeverity.Info, "Spotify", "Spotify Connected. You can now start queueing songs."));
+        }
+
+        public void RenewToken(int seconds)
+        {
+            var renewThread = Task.Run(async () =>
+            {
+                await Task.Delay(1000 * (seconds - 120));
+                SReady = false;
+                await Util.LoggerAsync(new LogMessage(LogSeverity.Info, "Spotify", "Spotify token refreshing."));
+
+                var config = SpotifyClientConfig.CreateDefault();
+                var tokenResponse = await new OAuthClient(config).RequestToken(new AuthorizationCodeRefreshRequest(CLIENT_ID, CLIENT_SECRET, SRefresh));
+
+                SClient = new SpotifyClient(tokenResponse.AccessToken);
+                SToken = tokenResponse.AccessToken;
+                SReady = true;
+                SExpiry = DateTime.Now.AddSeconds(tokenResponse.ExpiresIn);
+
+                await Util.LoggerAsync(new LogMessage(LogSeverity.Info, "Spotify", "Spotify token refreshed."));
+            });
         }
 
         public static bool Ready() => SReady;
@@ -99,6 +121,8 @@ namespace blurr.spotifybot
             Requests.Add(request);
             return true;
         }
+
+        public static DateTime GetExpiry() => SExpiry;
 
         private async Task ProcessRequestsAsync(SocketMessage msg)
         {
