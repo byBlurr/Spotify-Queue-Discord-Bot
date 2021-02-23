@@ -6,4 +6,8 @@
     <RootNamespace>blurr.spotifybot</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Discord.Net.Bot" Version="2.2.0.13" />
+  </ItemGroup>
+
 </Project>
